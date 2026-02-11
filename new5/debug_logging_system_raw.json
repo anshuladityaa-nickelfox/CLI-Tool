@@ -1,7 +1,0 @@
-{
-  "models.py": "from django.db import models\nfrom django.contrib.auth import get_user_model\n\nUser = get_user_model()\n\nclass LogEntry(models.Model):\n    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='log_entries')\n    log_message = models.TextField()\n    created_at = models.DateTimeField(auto_now_add=True)\n\n    def __str__(self):\n        return f'{self.user.username} - {self.log_message}'\n\n    class Meta:\n        ordering = ['-created_at']",
-  "admin.py": "from django.contrib import admin\nfrom .models import LogEntry\n\n@admin.register(LogEntry)\nclass LogEntryAdmin(admin.ModelAdmin):\n    list_display = ('id', 'log_message', 'created_at')",
-  "views.py": "from rest_framework import viewsets\nfrom .models import LogEntry\n\nclass LogEntryViewSet(viewsets.ModelViewSet):\n    queryset = LogEntry.objects.all()",
-  "urls.py": "from django.urls import path\n\nurlpatterns = [\n    # Add URL patterns here\n]",
-  "apps.py": "from django.apps import AppConfig\n\nclass LoggingSystemConfig(AppConfig):\n    default_auto_field = 'django.db.models.BigAutoField'\n    name = 'apps.logging_system'"
-}

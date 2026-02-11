@@ -127,6 +127,9 @@ class DjangoProjectGenerator:
         # Generate docker-compose.yml
         compose_content = self.ai_client.generate_base_file('docker_compose', 'config')
         self._write_file("docker-compose.yml", compose_content)
+        
+        # Create environment-specific settings
+        self._create_environment_settings()
     
     def _fix_settings_py(self):
         """Validate and fix critical settings in settings.py"""
@@ -163,6 +166,327 @@ class DjangoProjectGenerator:
                 content = '\n'.join(lines)
         
         settings_path.write_text(content)
+    
+    def _create_environment_settings(self):
+        """Create environment-specific settings files"""
+        console.print("[cyan]Creating environment-specific settings...[/cyan]")
+        
+        # Create settings folder structure
+        settings_dir = self.project_path / self.config_name / "settings"
+        settings_dir.mkdir(exist_ok=True)
+        
+        # Create __init__.py that loads the appropriate settings
+        init_content = '''"""
+Environment-specific settings loader
+"""
+import os
+
+# Determine which settings to use based on DJANGO_ENV environment variable
+env = os.getenv('DJANGO_ENV', 'dev')
+
+if env == 'production':
+    from .production import *
+elif env == 'staging':
+    from .staging import *
+else:
+    from .development import *
+'''
+        self._write_file(f"{self.config_name}/settings/__init__.py", init_content)
+        
+        # Create base.py with common settings
+        base_content = '''"""
+Base settings shared across all environments
+"""
+from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production')
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'rest_framework',
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'config.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'config.wsgi.application'
+
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 100,
+}
+
+# Create logs directory
+(BASE_DIR / 'logs').mkdir(exist_ok=True)
+
+# Feature-specific settings will be added below
+'''
+        self._write_file(f"{self.config_name}/settings/base.py", base_content)
+        
+        # Create development.py (SQLite)
+        dev_content = '''"""
+Development settings - uses SQLite
+"""
+from .base import *
+
+DEBUG = True
+
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
+# Development logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'dev.log',
+            'maxBytes': 1024 * 1024 * 15,
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'DEBUG',
+    },
+}
+'''
+        self._write_file(f"{self.config_name}/settings/development.py", dev_content)
+        
+        # Create staging.py (PostgreSQL)
+        staging_content = '''"""
+Staging settings - uses PostgreSQL
+"""
+from .base import *
+
+DEBUG = True  # Can be True for staging
+
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'staging.example.com').split(',')
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME', 'staging_db'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+    }
+}
+
+# Staging logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'staging.log',
+            'maxBytes': 1024 * 1024 * 15,
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'INFO',
+    },
+}
+'''
+        self._write_file(f"{self.config_name}/settings/staging.py", staging_content)
+        
+        # Create production.py (PostgreSQL + Security)
+        prod_content = '''"""
+Production settings - uses PostgreSQL with security hardening
+"""
+from .base import *
+
+DEBUG = False
+
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+        'CONN_MAX_AGE': 600,
+    }
+}
+
+# Security settings
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Production logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'production.log',
+            'maxBytes': 1024 * 1024 * 15,
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'WARNING',
+    },
+}
+
+# Email configuration for production
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+'''
+        self._write_file(f"{self.config_name}/settings/production.py", prod_content)
+        
+        # Update .env.example with environment variable
+        env_example_path = self.project_path / ".env.example"
+        if env_example_path.exists():
+            env_content = env_example_path.read_text()
+            if 'DJANGO_ENV' not in env_content:
+                env_content = f"# Environment: dev, staging, production\nDJANGO_ENV=dev\n\n{env_content}"
+                
+                # Add PostgreSQL settings
+                if 'DB_NAME' not in env_content:
+                    env_content += "\n# PostgreSQL settings (for staging/production)\n"
+                    env_content += "DB_NAME=your_database_name\n"
+                    env_content += "DB_USER=your_database_user\n"
+                    env_content += "DB_PASSWORD=your_database_password\n"
+                    env_content += "DB_HOST=localhost\n"
+                    env_content += "DB_PORT=5432\n"
+                
+                env_example_path.write_text(env_content)
+        
+        # Move original settings.py to settings/legacy.py as backup
+        old_settings = self.project_path / self.config_name / "settings.py"
+        if old_settings.exists():
+            legacy_content = old_settings.read_text()
+            self._write_file(f"{self.config_name}/settings/legacy.py", f"# Original AI-generated settings (backup)\n\n{legacy_content}")
+            old_settings.unlink()  # Remove old settings.py
+        
+        console.print("[green]✓ Environment settings created (dev, staging, production)[/green]")
     
     
     def _generate_feature(self, feature: str):
@@ -257,8 +581,13 @@ class DjangoProjectGenerator:
             console.print(f"[yellow]Skipping {feature}. You can try generating it again later.[/yellow]")
     
     def _update_settings(self, app_name: str, folder: str = "apps"):
-        """Update settings.py to include new app"""
-        settings_path = self.project_path / self.config_name / "settings.py"
+        """Update settings to include new app"""
+        # Update base.py instead of settings.py
+        settings_path = self.project_path / self.config_name / "settings" / "base.py"
+        if not settings_path.exists():
+            # Fallback to old settings.py if base.py doesn't exist yet
+            settings_path = self.project_path / self.config_name / "settings.py"
+        
         content = settings_path.read_text()
         
         # Add app to INSTALLED_APPS with correct folder prefix
@@ -278,11 +607,14 @@ class DjangoProjectGenerator:
             if rbac_models_path.exists():
                 rbac_models = rbac_models_path.read_text()
                 if 'class User(' in rbac_models and ('AbstractUser' in rbac_models or 'AbstractBaseUser' in rbac_models):
-                    # Add AUTH_USER_MODEL after ALLOWED_HOSTS
-                    content = content.replace(
-                        "ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')",
-                        f"ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')\n\n# Custom User Model\nAUTH_USER_MODEL = '{folder}.rbac.User'"
-                    )
+                    # Add AUTH_USER_MODEL after ALLOWED_HOSTS or at the end
+                    if "ALLOWED_HOSTS" in content:
+                        content = content.replace(
+                            "ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')",
+                            f"ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')\n\n# Custom User Model\nAUTH_USER_MODEL = '{folder}.rbac.User'"
+                        )
+                    else:
+                        content += f"\n\n# Custom User Model\nAUTH_USER_MODEL = '{folder}.rbac.User'\n"
                     console.print("[yellow]Added AUTH_USER_MODEL setting for custom RBAC User model[/yellow]")
         
         settings_path.write_text(content)
@@ -592,11 +924,14 @@ python manage.py runserver
         self._write_file("quickstart.sh", quickstart_sh)
     
     def _finalize_settings(self):
-        """Add all collected settings to settings.py and clean up duplicates"""
+        """Add all collected settings to base.py and clean up duplicates"""
         if not self.all_settings:
             return
         
-        settings_path = self.project_path / self.config_name / "settings.py"
+        settings_path = self.project_path / self.config_name / "settings" / "base.py"
+        if not settings_path.exists():
+            settings_path = self.project_path / self.config_name / "settings.py"
+        
         content = settings_path.read_text()
         
         # Clean up the AI-generated settings to remove problematic code
