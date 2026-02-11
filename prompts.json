@@ -1,0 +1,41 @@
+{
+  "base_files": {
+    "manage_py": "Generate Django manage.py for '{project_name}'. Python only.",
+    "settings_py": "Generate Django settings.py for '{project_name}': BASE_DIR, SECRET_KEY, DEBUG, INSTALLED_APPS, MIDDLEWARE, TEMPLATES, DATABASES, STATIC/MEDIA, REST_FRAMEWORK, LOGGING. Add '# Feature-specific settings will be added below' at end. Python only.",
+    "urls_py": "Generate Django urls.py for '{project_name}': admin, rest_framework.urls, '# Feature URLs will be added here' comment, DEBUG static/media. Python only.",
+    "wsgi_py": "Generate Django wsgi.py for '{project_name}'. Python only.",
+    "asgi_py": "Generate Django asgi.py for '{project_name}'. Python only.",
+    "env_example": "Generate .env.example: SECRET_KEY, DEBUG, ALLOWED_HOSTS, EMAIL_*, AWS_*, REDIS_URL, CELERY_*, DJANGO_LOG_LEVEL.",
+    "dockerfile": "Generate Dockerfile: python:3.11-slim, requirements, collectstatic, gunicorn '{project_name}'.",
+    "docker_compose": "Generate docker-compose.yml: web, db (postgres), redis, celery."
+  },
+  
+  "prompt_template": "Act as senior Django architect. Generate Django app code. Return ONLY this exact JSON structure with NO extra text:\n{{\n  \"app_name\": \"{app_name}\",\n  \"files\": {{\n    \"models.py\": \"from django.db import models\\nfrom django.contrib.auth import get_user_model\\n\\nUser = get_user_model()\\n\\nclass Example(models.Model):\\n    name = models.CharField(max_length=255)\\n    created_at = models.DateTimeField(auto_now_add=True)\",\n    \"admin.py\": \"from django.contrib import admin\\nfrom .models import Example\\n\\nadmin.site.register(Example)\",\n    \"apps.py\": \"from django.apps import AppConfig\\n\\nclass {app_name}Config(AppConfig):\\n    default_auto_field = 'django.db.models.BigAutoField'\\n    name = 'apps.{app_name}'\",\n    \"urls.py\": \"from django.urls import path\\n\\nurlpatterns = []\\n\",\n    \"views.py\": \"from rest_framework import viewsets\\nfrom .models import Example\\n\\nclass ExampleViewSet(viewsets.ModelViewSet):\\n    queryset = Example.objects.all()\"\n  }},\n  \"settings\": \"\",\n  \"requirements\": [],\n  \"instructions\": \"\"\n}}\n\nCreate for: {feature_description}. Keep code minimal (10-15 lines per file). Use get_user_model() for User. Add related_name to all ForeignKeys. Ensure valid Python syntax.",
+  
+  "features": {
+    "mail": {
+      "app_name": "mail_service",
+      "description": "email sending with Email model"
+    },
+    "notification": {
+      "app_name": "notifications",
+      "description": "user notifications with Notification model"
+    },
+    "rbac": {
+      "app_name": "rbac",
+      "description": "Role and Permission models (NO custom User)"
+    },
+    "upload": {
+      "app_name": "uploads",
+      "description": "file uploads with UploadedFile model"
+    },
+    "error_handling": {
+      "app_name": "error_handler",
+      "description": "error logging with ErrorLog model"
+    },
+    "logging": {
+      "app_name": "logging_system",
+      "description": "system logging with LogEntry model"
+    }
+  }
+}

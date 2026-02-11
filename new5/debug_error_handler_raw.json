@@ -1,0 +1,7 @@
+{
+  "models.py": "from django.db import models\nfrom django.contrib.auth import get_user_model\n\nUser = get_user_model()\n\nclass ErrorLog(models.Model):\n    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='error_logs')\n    error_message = models.TextField()\n    created_at = models.DateTimeField(auto_now_add=True)\n\n    def __str__(self):\n        return f'Error Log for {self.user.username}'\n\n    class Meta:\n        ordering = ['-created_at']",
+  "admin.py": "from django.contrib import admin\nfrom .models import ErrorLog\n\n@admin.register(ErrorLog)\nclass ErrorLogAdmin(admin.ModelAdmin):\n    list_display = ('id', 'error_message', 'created_at')",
+  "views.py": "from rest_framework import viewsets\nfrom .models import ErrorLog\n\nclass ErrorLogViewSet(viewsets.ModelViewSet):\n    queryset = ErrorLog.objects.all()",
+  "urls.py": "from django.urls import path\n\nurlpatterns = [\n    # Add URL patterns here\n]",
+  "apps.py": "from django.apps import AppConfig\n\nclass ErrorHandlerConfig(AppConfig):\n    default_auto_field = 'django.db.models.BigAutoField'\n    name = 'apps.error_handler'"
+}
