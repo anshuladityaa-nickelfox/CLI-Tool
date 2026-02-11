@@ -1,7 +1,7 @@
 {
   "base_files": {
     "manage_py": "Generate Django manage.py for '{project_name}'. Python only.",
-    "settings_py": "Generate Django settings.py for '{project_name}': BASE_DIR, SECRET_KEY, DEBUG, INSTALLED_APPS, MIDDLEWARE, TEMPLATES, DATABASES, STATIC/MEDIA, REST_FRAMEWORK, LOGGING. Add '# Feature-specific settings will be added below' at end. Python only.",
+    "settings_py": "Generate Django settings.py for '{project_name}': BASE_DIR, SECRET_KEY, DEBUG, ALLOWED_HOSTS, INSTALLED_APPS, MIDDLEWARE, ROOT_URLCONF='{project_name}.urls', TEMPLATES, WSGI_APPLICATION='{project_name}.wsgi.application', DATABASES, STATIC/MEDIA, REST_FRAMEWORK, LOGGING (with file handler to logs/django.log). Add '(BASE_DIR / \"logs\").mkdir(exist_ok=True)' before LOGGING config. Add '# Feature-specific settings will be added below' at end. Python only.",
     "urls_py": "Generate Django urls.py for '{project_name}': admin, rest_framework.urls, '# Feature URLs will be added here' comment, DEBUG static/media. Python only.",
     "wsgi_py": "Generate Django wsgi.py for '{project_name}'. Python only.",
     "asgi_py": "Generate Django asgi.py for '{project_name}'. Python only.",

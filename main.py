@@ -58,6 +58,23 @@ def create_project():
         console.print("[bold red]Project name cannot be empty[/bold red]")
         raise typer.Exit(1)
     
+    # Get project directory
+    console.print("\n[bold yellow]Project Directory:[/bold yellow]")
+    console.print("  • Press Enter to create in parent directory (recommended)")
+    console.print("  • Or enter a custom path (e.g., C:\\Projects or /home/user/projects)")
+    
+    project_dir = Prompt.ask("[bold green]Directory[/bold green]", default="")
+    
+    if not project_dir:
+        # Default: parent directory of the platform
+        current_dir = Path(__file__).parent
+        project_dir = str(current_dir.parent / project_name)
+        console.print(f"[dim]Using: {project_dir}[/dim]")
+    else:
+        # Custom path
+        project_dir = str(Path(project_dir) / project_name)
+        console.print(f"[dim]Using: {project_dir}[/dim]")
+    
     # Select programming language
     console.print("\n[bold yellow]Select programming language:[/bold yellow]")
     console.print("1. Python (Django)")
@@ -98,6 +115,7 @@ def create_project():
     
     # Confirm
     console.print(f"\n[bold cyan]Project Configuration:[/bold cyan]")
+    console.print(f"  Directory: {project_dir}")
     console.print(f"  Name: {project_name}")
     console.print(f"  Language: {language}")
     console.print(f"  Features: {', '.join(selected_features)}")
@@ -116,20 +134,41 @@ def create_project():
             task = progress.add_task("Initializing AI client...", total=None)
             
             ai_client = AIClient(api_key)
-            generator = DjangoProjectGenerator(project_name, selected_features, ai_client)
+            generator = DjangoProjectGenerator(project_name, selected_features, ai_client, project_dir)
             
             progress.update(task, description="Generating project structure...")
             generator.generate_project()
             
+            progress.update(task, description="Setting up virtual environment...")
+            generator.setup_environment()
+            
+            progress.update(task, description="Installing dependencies...")
+            generator.install_requirements()
+            
+            progress.update(task, description="Running migrations...")
+            generator.run_migrations()
+            
+            progress.update(task, description="Creating superuser...")
+            generator.create_superuser()
+            
             progress.update(task, description="Complete!")
         
         console.print(f"\n[bold green]✅ Project '{project_name}' created successfully![/bold green]")
-        console.print(f"\n[bold cyan]Next steps:[/bold cyan]")
-        console.print(f"  1. cd {project_name}")
-        console.print(f"  2. python -m venv venv")
-        console.print(f"  3. venv\\Scripts\\activate  (Windows) or source venv/bin/activate (Unix)")
-        console.print(f"  4. pip install -r requirements.txt")
-        console.print(f"  5. python manage.py migrate")
+        console.print(f"\n[bold cyan]Project Details:[/bold cyan]")
+        console.print(f"  Location: {project_dir}")
+        console.print(f"  Superuser: {project_name}.com")
+        console.print(f"  Password: admin123")
+        
+        # Ask if user wants to start the server
+        if Confirm.ask("\n[bold yellow]Start development server now?[/bold yellow]", default=True):
+            console.print(f"\n[bold cyan]Starting server at http://127.0.0.1:8000[/bold cyan]")
+            console.print("[dim]Press Ctrl+C to stop the server[/dim]\n")
+            generator.run_server()
+        else:
+            console.print(f"\n[bold cyan]To start the server later:[/bold cyan]")
+            console.print(f"  1. cd {project_dir}")
+            console.print(f"  2. venv\\Scripts\\activate  (Windows) or source venv/bin/activate (Unix)")
+            console.print(f"  3. python manage.py runserver")
         console.print(f"  6. python manage.py createsuperuser")
         console.print(f"  7. python manage.py runserver")
         
