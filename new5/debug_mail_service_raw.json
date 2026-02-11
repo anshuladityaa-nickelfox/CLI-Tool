@@ -1,7 +1,0 @@
-{
-  "models.py": "from django.db import models\nfrom django.contrib.auth import get_user_model\n\nUser = get_user_model()\n\nclass Email(models.Model):\n    subject = models.CharField(max_length=255)\n    body = models.TextField()\n    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_emails')\n    created_at = models.DateTimeField(auto_now_add=True)\n\n    def __str__(self):\n        return self.subject\n\n    class Meta:\n        ordering = ['-created_at']",
-  "admin.py": "from django.contrib import admin\nfrom .models import Email\n\n@admin.register(Email)\nclass EmailAdmin(admin.ModelAdmin):\n    list_display = ('id', 'subject', 'body', 'created_at')",
-  "views.py": "from rest_framework import viewsets\nfrom .models import Email\n\nclass EmailViewSet(viewsets.ModelViewSet):\n    queryset = Email.objects.all()",
-  "urls.py": "from django.urls import path\n\nurlpatterns = [\n    # Add URL patterns here\n]",
-  "apps.py": "from django.apps import AppConfig\n\nclass MailServiceConfig(AppConfig):\n    default_auto_field = 'django.db.models.BigAutoField'\n    name = 'apps.mail_service'"
-}
