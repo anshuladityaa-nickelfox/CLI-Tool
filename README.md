@@ -1,242 +1,357 @@
-# Django Project Generator (initiatep)
+# Django Project Generator (Nickelfox)
 
-AI-powered Django project scaffolder using Groq's Llama 3.3 model.
+AI-powered Django project scaffolder using Groq's Llama 3.3 model. Generate production-ready Django projects with advanced features in seconds.
 
 ## Features
 
-- 🤖 **AI-Powered**: Uses Llama 3.3 to generate Django code
-- 📦 **6 Built-in Features**: Mail, Notifications, RBAC, Uploads, Error Handling, Logging
-- ⚡ **Fast Setup**: Generate complete Django projects in minutes
-- 🔧 **Production Ready**: Includes Docker, setup scripts, and best practices
-- 🎯 **Customizable**: Select only the features you need
+- 🤖 **AI-Powered Code Generation** - Uses Llama 3.3 70B for intelligent code generation
+- 🚀 **Instant Setup** - Automated venv, dependencies, migrations, and superuser creation
+- 📁 **Organized Structure** - Separate folders for DB services (apps/) and utilities (common/)
+- 🌍 **Multi-Environment** - Pre-configured dev, staging, and production settings
+- 🔧 **6 Advanced Features** - Mail, Notifications, RBAC, Uploads, Error Handling, Logging
+- ✅ **Auto-Validation** - Built-in code validator fixes common Django errors
+- 🐳 **Docker Ready** - Includes Dockerfile and docker-compose.yml
+- 🎯 **Production Ready** - PostgreSQL, security hardening, and logging configured
 
 ## Quick Start
 
-### 1. Install
+### Installation
 
 ```bash
-# Clone or download this repository
+# Clone the repository
+git clone <repository-url>
 cd "CLI tool 2"
 
 # Install globally
 pip install -e .
 ```
 
-### 2. Configure API Key
-
-Get your free Groq API key from: https://console.groq.com/keys
+### Configuration
 
 ```bash
 # Create config directory
-mkdir ~/.initiatep
+mkdir ~/.nfxinit
 
 # Copy template
-cp .env.example ~/.initiatep/.env
+cp .env.example ~/.nfxinit/.env
 
 # Edit and add your API key
-# Windows: notepad ~/.initiatep/.env
-# Linux/Mac: nano ~/.initiatep/.env
+# Windows: notepad ~/.nfxinit/.env
+# Linux/Mac: nano ~/.nfxinit/.env
 ```
 
-Add your key:
+Add your Groq API key to `~/.nfxinit/.env`:
 ```
-GROQ_API_KEY=your_actual_groq_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
-### 3. Generate a Project
+Get your free API key from: https://console.groq.com/keys
+
+### Usage
 
 ```bash
 # Run from anywhere
-initiatep
+NFXinit
 
 # Or explicitly
-initiatep create-project
+NFXinit create-project
+
+# Show version
+NFXinit version
+
+# Show help
+NFXinit --help
 ```
 
-Follow the prompts:
-- Enter project name
-- Select features (1,2,3 or 'all')
-- Confirm and generate!
+## Project Generation Flow
 
-## Available Features
+1. **Enter project name** (e.g., "myproject")
+2. **Choose directory** (default: parent folder of NFXinit)
+3. **Select features** (1-6 or 'all')
+4. **Confirm** and wait for generation
+5. **Automatic setup**:
+   - Creates virtual environment
+   - Installs dependencies
+   - Runs migrations
+   - Creates superuser (username: `{project_name}.com`, password: `admin123`)
+6. **Optional**: Start development server immediately
 
-1. **Mail Services** - Email sending functionality
-2. **Notification System** - User notifications
-3. **RBAC** - Role-Based Access Control
-4. **Upload Documents** - File upload management
-5. **Global Error Handling** - Centralized error handling
-6. **Logging System** - Application logging
-
-## Feature Selection Examples
-
-```bash
-# All features
-Features [all]: all
-
-# Just mail and notifications
-Features [all]: 1,2
-
-# Only RBAC
-Features [all]: 3
-
-# Custom combination
-Features [all]: 1,3,5,6
-```
-
-## What Gets Generated
+## Generated Project Structure
 
 ```
-your_project/
-├── apps/                    # Your selected features
+myproject/
+├── config/                      # Django configuration
+│   ├── settings/
+│   │   ├── __init__.py         # Auto-loads based on DJANGO_ENV
+│   │   ├── base.py             # Common settings
+│   │   ├── development.py      # Dev (SQLite)
+│   │   ├── staging.py          # Staging (PostgreSQL)
+│   │   └── production.py       # Production (PostgreSQL + Security)
+│   ├── urls.py
+│   ├── wsgi.py
+│   └── asgi.py
+├── apps/                        # DB-based services
 │   ├── mail_service/
 │   ├── notifications/
-│   └── rbac/
-├── your_project/
-│   ├── settings.py         # Configured
-│   └── urls.py            # Routes added
+│   ├── rbac/
+│   ├── uploads/
+│   └── logging_system/
+├── common/                      # Non-DB utilities
+│   └── error_handler/
+├── templates/
+├── static/
+├── media/
+├── logs/
+├── venv/                        # Virtual environment
 ├── manage.py
 ├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
-├── setup.bat/sh           # Automated setup
-└── SETUP.md              # Instructions
+└── .env.example
 ```
 
-## After Generation
+## Available Features
 
+1. **Mail Services** - Email sending with templates and tracking
+2. **Notification System** - User notifications (in-app, email, push)
+3. **RBAC** - Role-Based Access Control with permissions
+4. **Upload Documents** - File upload handling with validation
+5. **Global Error Handling** - Centralized error logging and tracking
+6. **Logging System** - Multi-level logging (console, file, database)
+
+## Environment Configuration
+
+### Development (Default)
 ```bash
-cd your_project
-
-# Quick start (automated)
-./quickstart.sh  # Linux/Mac
-quickstart.bat   # Windows
-
-# Or manual setup
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py createsuperuser
+# Uses SQLite, DEBUG=True
 python manage.py runserver
+```
+
+### Staging
+```bash
+# Uses PostgreSQL
+DJANGO_ENV=staging python manage.py runserver
+```
+
+### Production
+```bash
+# Uses PostgreSQL with security hardening
+DJANGO_ENV=production gunicorn config.wsgi:application
+```
+
+### Environment Variables
+
+Create a `.env` file in your project root:
+
+```env
+# Environment: dev, staging, production
+DJANGO_ENV=dev
+
+# Django
+SECRET_KEY=your-secret-key
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# PostgreSQL (for staging/production)
+DB_NAME=your_database_name
+DB_USER=your_database_user
+DB_PASSWORD=your_database_password
+DB_HOST=localhost
+DB_PORT=5432
+
+# Email
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+DEFAULT_FROM_EMAIL=noreply@example.com
+
+# AWS S3 (optional)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_STORAGE_BUCKET_NAME=
+AWS_S3_REGION_NAME=us-east-1
+
+# Redis (optional)
+REDIS_URL=redis://localhost:6379/0
+
+# Celery (optional)
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
 ```
 
 ## Commands
 
 ```bash
 # Generate project
-initiatep
-initiatep create-project
+NFXinit
+NFXinit create-project
 
 # Show version
-initiatep version
+NFXinit version
 
 # Show help
-initiatep --help
+NFXinit --help
 
 # Verify setup
 python verify_setup.py
 ```
 
-## Requirements
+## Default Credentials
 
-- Python 3.8+
-- Groq API key (free tier available)
-- Internet connection (for AI generation)
+After project generation:
+- **Admin URL**: http://127.0.0.1:8000/admin/
+- **Username**: `{project_name}.com` (e.g., myproject.com)
+- **Password**: `admin123`
 
-## How It Works
-
-1. **AI Generation**: Uses Llama 3.3 to generate Django code file-by-file
-2. **Validation**: Automatically validates Python syntax
-3. **Coordination**: Ensures imports and references match between files
-4. **Integration**: Configures settings, URLs, and requirements automatically
+⚠️ **Change these credentials in production!**
 
 ## Troubleshooting
 
-### Command not found
-
-Add Python scripts to PATH:
-- Windows: `C:\Users\YourName\AppData\Local\Programs\Python\Python3XX\Scripts`
-- Linux/Mac: `~/.local/bin`
-
-### API Key not found
-
+### API Key Not Found
 ```bash
-# Check config exists
-ls ~/.initiatep/.env
+# Check if config exists
+ls ~/.nfxinit/.env
 
 # If not, create it
-mkdir -p ~/.initiatep
-cp .env.example ~/.initiatep/.env
+mkdir -p ~/.nfxinit
+cp .env.example ~/.nfxinit/.env
 # Edit and add your GROQ_API_KEY
 ```
 
-### Generation fails
+### Command Not Found
+If `NFXinit` is not found after installation:
 
-- Check your API key is valid
-- Ensure internet connection
-- Try again (AI generation can occasionally fail)
+1. **Check if pip bin directory is in PATH:**
+   ```bash
+   # Windows
+   echo %PATH%
+   
+   # Unix/Mac
+   echo $PATH
+   ```
+
+2. **Add to PATH if needed:**
+   ```bash
+   # Windows (PowerShell)
+   $env:Path += ";C:\Users\YourUsername\AppData\Local\Programs\Python\Python311\Scripts"
+   
+   # Unix/Mac
+   export PATH="$HOME/.local/bin:$PATH"
+   ```
+
+3. **Reinstall:**
+   ```bash
+   pip uninstall django-nfxinit -y
+   pip install -e .
+   ```
+
+### Migration Errors
+If migrations fail, run manually:
+```bash
+cd your_project
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Unix/Mac
+python manage.py makemigrations
+python manage.py migrate
+```
+
+## Technology Stack
+
+- **Python**: 3.8+
+- **Django**: 4.2+
+- **Django REST Framework**: 3.14+
+- **AI Model**: Llama 3.3 70B (via Groq)
+- **Database**: SQLite (dev), PostgreSQL (staging/prod)
+- **CLI**: Typer + Rich
+
+## Features in Detail
+
+### Mail Service
+- Send emails with templates
+- Track email status
+- Queue management
+- Attachment support
+
+### Notifications
+- Multiple channels (in-app, email, push)
+- User preferences
+- Read/unread status
+- Notification history
+
+### RBAC (Role-Based Access Control)
+- Custom roles and permissions
+- User-role assignments
+- Permission checking decorators
+- Admin interface for management
+
+### File Uploads
+- Secure file handling
+- File type validation
+- Size limits
+- Storage management (local/S3)
+
+### Error Handling
+- Global exception handling
+- Error logging
+- User-friendly error pages
+- Admin error dashboard
+
+### Logging System
+- Multi-level logging (DEBUG, INFO, WARNING, ERROR)
+- Console and file handlers
+- Rotating log files
+- Database logging option
 
 ## Development
 
-```bash
-# Install in editable mode
-pip install -e .
-
-# Make changes to code
-# Changes reflect immediately (no reinstall needed)
-
-# Run directly
-python main.py create-project
-```
-
-## Project Structure
-
+### Project Structure
 ```
 CLI tool 2/
-├── generators/              # Core generation logic
-│   ├── ai_client.py        # Groq API integration
-│   ├── project_generator.py # Project scaffolding
-│   ├── code_validator.py   # Syntax validation
-│   ├── templates.py        # Base Django templates
-│   └── gitignore_template.py
-├── main.py                 # CLI entry point
-├── prompts.json           # AI prompts configuration
-├── setup.py               # Package configuration
-├── requirements.txt       # Dependencies
-└── README.md             # This file
+├── generators/
+│   ├── ai_client.py           # Groq API integration
+│   ├── project_generator.py   # Project scaffolding
+│   ├── code_validator.py      # Syntax validation
+│   ├── templates.py           # Base templates
+│   └── gitignore_template.py  # .gitignore template
+├── main.py                     # CLI entry point
+├── prompts.json               # AI prompts
+├── setup.py                   # Package config
+├── requirements.txt           # Dependencies
+└── README.md
 ```
 
-## Configuration
-
-### Prompts
-
-Edit `prompts.json` to customize AI prompts for each feature.
-
-### Models
-
-Change model in `generators/ai_client.py`:
-```python
-self.model = "llama-3.3-70b-versatile"  # Current
-# Or try: "mixtral-8x7b-32768", "gemma2-9b-it"
-```
+### Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## License
 
-MIT License - Feel free to use and modify!
+Copyright © 2024 Nickelfox. All rights reserved.
 
 ## Support
 
 For issues or questions:
-1. Check `USAGE_GUIDE.md` for detailed usage
-2. Run `python verify_setup.py` to check configuration
-3. Review generated `SETUP.md` in your project
+- Email: info@nickelfox.com
+- Website: https://nickelfox.com
 
-## Credits
+## Changelog
 
-- Built with [Typer](https://typer.tiangolo.com/) for CLI
-- Powered by [Groq](https://groq.com/) AI
-- Uses [Llama 3.3](https://www.llama.com/) model
+### v1.0.0 (Current)
+- ✅ AI-powered code generation with Llama 3.3
+- ✅ Automated project setup (venv, deps, migrations)
+- ✅ Multi-environment configuration (dev/staging/prod)
+- ✅ Organized folder structure (apps/common)
+- ✅ 6 advanced features
+- ✅ Auto-validation and error fixing
+- ✅ Docker support
+- ✅ PostgreSQL for staging/production
+- ✅ Security hardening for production
 
 ---
 
-**Happy Coding! 🚀**
+**Made with ❤️ by Nickelfox**

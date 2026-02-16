@@ -5,11 +5,11 @@ Install globally with: pip install -e .
 from setuptools import setup, find_packages
 
 setup(
-    name="django-initiatep",
+    name="django-nfxinit",
     version="1.0.0",
-    description="AI-powered Django project scaffolder",
-    author="Your Name",
-    author_email="your.email@example.com",
+    description="AI-powered Django project scaffolder by Nickelfox",
+    author="Nickelfox",
+    author_email="info@nickelfox.com",
     packages=find_packages(),
     py_modules=["main"],
     include_package_data=True,
@@ -21,7 +21,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "initiatep=main:app",
+            "NFXinit=main:app",
         ],
     },
     python_requires=">=3.8",

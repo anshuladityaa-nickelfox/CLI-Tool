@@ -17,9 +17,9 @@ from generators.ai_client import AIClient
 # Load environment variables from multiple locations
 # Priority: 1. Current directory, 2. User home directory
 load_dotenv()  # Load from current directory .env
-home_config = Path.home() / '.initiatep' / '.env'
+home_config = Path.home() / '.nfxinit' / '.env'
 if home_config.exists():
-    load_dotenv(home_config)  # Load from ~/.initiatep/.env
+    load_dotenv(home_config)  # Load from ~/.nfxinit/.env
 
 app = typer.Typer(help="Django Project Scaffolder with AI-powered code generation")
 console = Console()
@@ -39,16 +39,16 @@ FEATURES = {
 @app.command()
 def create_project():
     """Create a new Django project with AI-generated features"""
-    console.print("\n[bold cyan]🚀 Django Project Generator (initiatep v{})  [/bold cyan]\n".format(__version__))
+    console.print("\n[bold cyan]🚀 Django Project Generator (Nickelfox)[/bold cyan]\n")
     
     # Check for API key
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         console.print("[bold red]❌ Error: GROQ_API_KEY not found[/bold red]")
         console.print("\nPlease set up your API key:")
-        console.print("1. Create config directory: mkdir ~/.initiatep")
-        console.print("2. Create config file: copy .env.example ~/.initiatep/.env")
-        console.print("3. Edit ~/.initiatep/.env and add your Groq API key")
+        console.print("1. Create config directory: mkdir ~/.nfxinit")
+        console.print("2. Create config file: copy .env.example ~/.nfxinit/.env")
+        console.print("3. Edit ~/.nfxinit/.env and add your Groq API key")
         console.print("\nOr set it in current directory .env file")
         raise typer.Exit(1)
     
@@ -180,16 +180,16 @@ def create_project():
 @app.command()
 def version():
     """Show version information"""
-    console.print(f"[bold cyan]initiatep[/bold cyan] version [bold green]{__version__}[/bold green]")
-    console.print("Django Project Generator with AI")
+    console.print(f"[bold cyan]NFXinit[/bold cyan] version [bold green]{__version__}[/bold green]")
+    console.print("Django Project Generator by Nickelfox")
 
 
 @app.callback(invoke_without_command=True)
 def main_callback(ctx: typer.Context):
     """
-    Django Project Generator - Create Django projects with AI-powered features
+    Django Project Generator by Nickelfox - Create Django projects with AI-powered features
     
-    Run 'initiatep create-project' or just 'initiatep' to start
+    Run 'NFXinit create-project' or just 'NFXinit' to start
     """
     if ctx.invoked_subcommand is None:
         # If no subcommand, run create-project by default
