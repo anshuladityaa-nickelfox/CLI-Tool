@@ -12,32 +12,40 @@ from pathlib import Path
 class AIClient:
     """Client for interacting with Groq API"""
     
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, language: str = "django"):
         self.api_key = api_key
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         # Use llama3 - better at following instructions than qwen
         self.model = "llama-3.3-70b-versatile"
+        self.language = language
         
         # Load prompts from JSON file
         prompts_file = Path(__file__).parent.parent / 'prompts.json'
         with open(prompts_file, 'r') as f:
-            self.prompts_config = json.load(f)
+            all_prompts = json.load(f)
+            # Get language-specific prompts
+            self.prompts_config = all_prompts.get(language, all_prompts.get("django"))
     
-    def generate_django_code(self, feature: str, context: Dict) -> Dict:
+    def generate_code(self, feature: str, context: Dict) -> Dict:
         """
-        Generate Django code for a specific feature using AI
+        Generate code for a specific feature using AI (works for Django/Next.js/NestJS)
         
         Args:
-            feature: Feature name (mail, notification, rbac, etc.)
+            feature: Feature name (mail, notification, rbac, button, auth, etc.)
             context: Additional context for code generation
             
         Returns:
             Dictionary containing generated files and their content
         """
-        print(f"[INFO] Generating {feature} using AI (llama-3.3)...")
+        print(f"[INFO] Generating {feature} using AI (llama-3.3) for {self.language}...")
         
         # Use batch generation (file by file) - NO FALLBACK
         return self._generate_in_batches(feature, context)
+    
+    # Keep old method name for backward compatibility
+    def generate_django_code(self, feature: str, context: Dict) -> Dict:
+        """Backward compatibility wrapper"""
+        return self.generate_code(feature, context)
     
     def _generate_in_batches(self, feature: str, context: Dict) -> Dict:
         """
@@ -52,18 +60,48 @@ class AIClient:
         """
         project_name = context.get('project_name', 'myproject')
         
-        # Get feature configuration
-        features = self.prompts_config.get('features', {})
-        feature_config = features.get(feature, {
-            "app_name": feature,
-            "description": feature
-        })
+        # Get feature configuration based on language
+        if self.language == "django":
+            features = self.prompts_config.get('features', {})
+            feature_config = features.get(feature, {
+                "app_name": feature,
+                "description": feature
+            })
+            
+            app_name = feature_config.get('app_name', feature)
+            feature_desc = feature_config.get('description', feature)
+            
+            # Files to generate for Django
+            files_to_generate = ['models.py', 'admin.py', 'views.py', 'urls.py', 'apps.py']
+            
+        elif self.language == "nextjs":
+            components = self.prompts_config.get('components', {})
+            component_config = components.get(feature, {
+                "component_name": feature.title(),
+                "description": feature
+            })
+            
+            app_name = component_config.get('component_name', feature.title())
+            feature_desc = component_config.get('description', feature)
+            
+            # Files to generate for Next.js
+            files_to_generate = ['component.tsx', 'types.ts', 'styles.module.css']
+            
+        elif self.language == "nestjs":
+            modules = self.prompts_config.get('modules', {})
+            module_config = modules.get(feature, {
+                "module_name": feature,
+                "description": feature
+            })
+            
+            app_name = module_config.get('module_name', feature)
+            feature_desc = module_config.get('description', feature)
+            
+            # Files to generate for NestJS
+            files_to_generate = ['module.ts', 'controller.ts', 'service.ts', 'entity.ts', 'dto.ts']
         
-        app_name = feature_config.get('app_name', feature)
-        feature_desc = feature_config.get('description', feature)
-        
-        # Files to generate
-        files_to_generate = ['models.py', 'admin.py', 'views.py', 'urls.py', 'apps.py']
+        else:
+            raise Exception(f"Unsupported language: {self.language}")
         
         generated_files = {}
         
@@ -86,27 +124,57 @@ class AIClient:
                 
             except Exception as e:
                 print(f"  ✗ {filename} failed: {str(e)}")
-                # Use minimal code for failed file
-                from generators.code_validator import get_minimal_code
-                generated_files[filename] = get_minimal_code(filename, app_name)
+                # Use minimal code for failed file (Django only)
+                if self.language == "django":
+                    from generators.code_validator import get_minimal_code
+                    generated_files[filename] = get_minimal_code(filename, app_name)
+                else:
+                    # For Next.js/NestJS, just use empty/minimal content
+                    generated_files[filename] = f"// TODO: Implement {filename}"
         
-        # Fix import mismatches between files
-        generated_files = self._fix_import_mismatches(generated_files, app_name)
+        # Fix import mismatches between files (Django only)
+        if self.language == "django":
+            generated_files = self._fix_import_mismatches(generated_files, app_name)
         
         print(f"[SUCCESS] Generated {app_name}")
         
         # Return in expected format
-        return {
-            "app_name": app_name,
-            "files": generated_files,
-            "settings": "",
-            "requirements": [],
-            "instructions": f"{app_name} generated"
-        }
+        if self.language == "django":
+            return {
+                "app_name": app_name,
+                "files": generated_files,
+                "settings": "",
+                "requirements": [],
+                "instructions": f"{app_name} generated"
+            }
+        elif self.language == "nextjs":
+            return {
+                "component_name": app_name,
+                "files": generated_files,
+                "dependencies": [],
+                "instructions": f"{app_name} component generated"
+            }
+        elif self.language == "nestjs":
+            return {
+                "module_name": app_name,
+                "files": generated_files,
+                "dependencies": [],
+                "instructions": f"{app_name} module generated"
+            }
     
     def _generate_single_file(self, app_name: str, feature_desc: str, filename: str, project_name: str, existing_files: dict = None) -> str:
         """Generate a single file using AI"""
         prompt = self._build_single_file_prompt(app_name, feature_desc, filename, existing_files)
+        
+        # Determine system message based on language
+        if self.language == "django":
+            system_msg = "You are a Python code generator. You ONLY output valid Python code. Never add explanations, comments, or markdown. Just pure Python code that can be executed directly."
+        elif self.language == "nextjs":
+            system_msg = "You are a TypeScript/React code generator. You ONLY output valid TypeScript/React code. Never add explanations or markdown. Just pure code that can be used directly."
+        elif self.language == "nestjs":
+            system_msg = "You are a TypeScript/NestJS code generator. You ONLY output valid TypeScript code. Never add explanations or markdown. Just pure code that can be used directly."
+        else:
+            system_msg = "You are a code generator. You ONLY output valid code. Never add explanations or markdown."
         
         max_retries = 2
         
@@ -125,14 +193,14 @@ class AIClient:
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a Python code generator. You ONLY output valid Python code. Never add explanations, comments, or markdown. Just pure Python code that can be executed directly."
+                            "content": system_msg
                         },
                         {
                             "role": "user",
                             "content": prompt
                         }
                     ],
-                    "temperature": 0.0,  # Zero temperature for deterministic output
+                    "temperature": 0.1 if self.language in ["nextjs", "nestjs"] else 0.0,  # Slightly higher for TS to get better structure
                     "max_tokens": 500,
                     "top_p": 1.0
                 }
@@ -163,6 +231,10 @@ class AIClient:
                     # Clean markdown
                     if code.startswith("```python"):
                         code = code[9:]
+                    elif code.startswith("```typescript") or code.startswith("```tsx"):
+                        code = code[code.find('\n')+1:]  # Skip first line
+                    elif code.startswith("```css"):
+                        code = code[6:]
                     elif code.startswith("```"):
                         code = code[3:]
                     if code.endswith("```"):
@@ -177,9 +249,17 @@ class AIClient:
                     
                     for line in lines:
                         stripped = line.strip()
-                        # Start collecting when we see imports or class/def
-                        if stripped.startswith(('from ', 'import ', 'class ', 'def ', '@')):
-                            in_code = True
+                        
+                        # Start collecting when we see code patterns
+                        if self.language == "django":
+                            if stripped.startswith(('from ', 'import ', 'class ', 'def ', '@')):
+                                in_code = True
+                        elif self.language in ["nextjs", "nestjs"]:
+                            # For TypeScript/React, be more lenient
+                            if (stripped.startswith(('import ', 'export ', 'const ', 'function ', 'class ', 'interface ', 'type ', '@', '//', '/*', "'use client'", '"use client"')) or
+                                (stripped.startswith('.') and filename.endswith('.css')) or  # CSS
+                                (in_code and stripped)):  # Once started, keep all non-empty lines
+                                in_code = True
                         
                         if in_code:
                             code_lines.append(line)
@@ -187,14 +267,32 @@ class AIClient:
                     if code_lines:
                         code = '\n'.join(code_lines)
                     
-                    # Basic validation - check for unterminated strings
-                    try:
-                        compile(code, '<string>', 'exec')
-                        print(f"    ✓ Valid Python")
-                    except SyntaxError as e:
-                        print(f"    ✗ Syntax error: {e}")
-                        # Don't try to fix, just fail and retry
-                        raise Exception(f"Invalid Python: {e}")
+                    # Basic validation for Python only
+                    if self.language == "django":
+                        try:
+                            compile(code, '<string>', 'exec')
+                            print(f"    ✓ Valid Python")
+                        except SyntaxError as e:
+                            print(f"    ✗ Syntax error: {e}")
+                            raise Exception(f"Invalid Python: {e}")
+                    elif self.language in ["nextjs", "nestjs"] and filename.endswith('.tsx'):
+                        # Basic validation for React components
+                        if 'export default function' not in code and 'export default' not in code:
+                            print(f"    ✗ Missing export default")
+                            raise Exception("Missing export default")
+                        
+                        # Fix React component structure
+                        if filename == 'component.tsx':
+                            fixed_code = self._fix_react_component(code, app_name)
+                            if fixed_code != code:
+                                code = fixed_code
+                                print(f"    ⚠ Fixed React component structure")
+                        
+                        print(f"    ✓ Code generated")
+                    else:
+                        # For TypeScript/CSS, just check it's not empty
+                        if code:
+                            print(f"    ✓ Code generated")
                     
                     if not code:
                         raise Exception("Empty")
@@ -212,7 +310,19 @@ class AIClient:
                 raise e
     
     def _build_single_file_prompt(self, app_name: str, feature_desc: str, filename: str, existing_files: dict = None) -> str:
-        """Build prompt for single file - very explicit to avoid syntax errors"""
+        """Build prompt for single file - language-specific"""
+        
+        if self.language == "django":
+            return self._build_django_file_prompt(app_name, feature_desc, filename, existing_files)
+        elif self.language == "nextjs":
+            return self._build_nextjs_file_prompt(app_name, feature_desc, filename, existing_files)
+        elif self.language == "nestjs":
+            return self._build_nestjs_file_prompt(app_name, feature_desc, filename, existing_files)
+        else:
+            return f"Generate {filename} for {app_name}"
+    
+    def _build_django_file_prompt(self, app_name: str, feature_desc: str, filename: str, existing_files: dict = None) -> str:
+        """Build prompt for Django file - very explicit to avoid syntax errors"""
         
         if filename == 'models.py':
             return f"""Write ONLY Python code for Django models.py file.
@@ -305,6 +415,177 @@ Requirements:
 Write exactly these 5 lines. No explanations. No markdown."""
 
         return f"Generate {filename} for {app_name}"
+    
+    def _build_nextjs_file_prompt(self, component_name: str, component_desc: str, filename: str, existing_files: dict = None) -> str:
+        """Build prompt for Next.js component file"""
+        
+        if filename == 'component.tsx':
+            return f"""Generate a valid React TypeScript component file.
+
+Component Name: {component_name}
+Description: {component_desc}
+
+CRITICAL REQUIREMENTS - Follow this EXACT structure:
+
+Line 1: 'use client';
+Line 2: (blank)
+Line 3: import React from 'react';
+Line 4: (blank if no hooks needed, or import {{ useState }} from 'react'; if needed)
+Lines after: Component function
+
+Component structure:
+export default function {component_name}() {{
+  // hooks here if needed
+  
+  return (
+    <div className="...">
+      {{/* JSX content */}}
+    </div>
+  );
+}}
+
+Rules:
+- MUST start with 'use client';
+- MUST import React
+- MUST have export default function
+- MUST have single root JSX element
+- Use Tailwind CSS classes
+- Maximum 35 lines
+- NO explanations, NO markdown, ONLY code
+
+Output valid TypeScript/React code only."""
+
+        elif filename == 'types.ts':
+            return f"""Write ONLY TypeScript types/interfaces for {component_name} component.
+
+Requirements:
+- Export interface for component props
+- Export any other needed types
+- Maximum 15 lines
+
+Write complete valid TypeScript code only. No explanations. No markdown."""
+
+        elif filename == 'styles.module.css':
+            return f"""Write ONLY CSS for {component_name} component.
+
+Requirements:
+- Use CSS modules syntax (.className)
+- Maximum 20 lines
+- Modern CSS
+
+Write complete valid CSS code only. No explanations. No markdown."""
+
+        return f"Generate {filename} for {component_name}"
+    
+    def _build_nestjs_file_prompt(self, module_name: str, module_desc: str, filename: str, existing_files: dict = None) -> str:
+        """Build prompt for NestJS module file"""
+        
+        if filename == 'module.ts':
+            return f"""Write ONLY TypeScript code for NestJS module.
+Module: {module_name}
+Description: {module_desc}
+
+Requirements:
+- Import @Module from '@nestjs/common'
+- Import controller and service
+- @Module decorator with imports, controllers, providers
+- Export class {module_name.title()}Module
+- Maximum 15 lines
+
+Write complete valid TypeScript code only. No explanations. No markdown."""
+
+        elif filename == 'controller.ts':
+            return f"""Write ONLY TypeScript code for NestJS controller.
+Module: {module_name}
+
+Requirements:
+- Import decorators from '@nestjs/common'
+- @Controller decorator
+- Inject service in constructor
+- 2-3 basic endpoints (GET, POST)
+- Maximum 25 lines
+
+Write complete valid TypeScript code only. No explanations. No markdown."""
+
+        elif filename == 'service.ts':
+            return f"""Write ONLY TypeScript code for NestJS service.
+Module: {module_name}
+
+Requirements:
+- Import @Injectable from '@nestjs/common'
+- @Injectable decorator
+- 2-3 basic methods
+- Maximum 20 lines
+
+Write complete valid TypeScript code only. No explanations. No markdown."""
+
+        elif filename == 'entity.ts':
+            return f"""Write ONLY TypeScript code for TypeORM entity.
+Module: {module_name}
+
+Requirements:
+- Import decorators from 'typeorm'
+- @Entity decorator
+- @PrimaryGeneratedColumn, @Column decorators
+- 3-5 fields
+- Maximum 20 lines
+
+Write complete valid TypeScript code only. No explanations. No markdown."""
+
+        elif filename == 'dto.ts':
+            return f"""Write ONLY TypeScript code for DTOs.
+Module: {module_name}
+
+Requirements:
+- Import decorators from 'class-validator'
+- Create DTO class
+- Use validation decorators
+- Maximum 15 lines
+
+Write complete valid TypeScript code only. No explanations. No markdown."""
+
+        return f"Generate {filename} for {module_name}"
+    
+    def _fix_react_component(self, code: str, component_name: str) -> str:
+        """Fix common React component issues"""
+        lines = code.split('\n')
+        fixed_lines = []
+        
+        # Ensure 'use client' is first
+        has_use_client = any("'use client'" in line or '"use client"' in line for line in lines)
+        if not has_use_client:
+            fixed_lines.append("'use client';")
+            fixed_lines.append("")
+        
+        # Ensure React import exists
+        has_react_import = any('import React' in line for line in lines)
+        react_import_added = False
+        
+        for line in lines:
+            # Skip if we already added use client
+            if not has_use_client and ("'use client'" in line or '"use client"' in line):
+                continue
+            
+            # Add React import after use client if missing
+            if not has_react_import and not react_import_added:
+                if "'use client'" in line or '"use client"' in line or (fixed_lines and 'use client' in fixed_lines[0]):
+                    if line.strip() == '':
+                        fixed_lines.append(line)
+                        fixed_lines.append("import React from 'react';")
+                        react_import_added = True
+                        continue
+            
+            fixed_lines.append(line)
+        
+        # If React import still not added, add it after use client
+        if not has_react_import and not react_import_added:
+            for i, line in enumerate(fixed_lines):
+                if 'use client' in line:
+                    fixed_lines.insert(i + 1, '')
+                    fixed_lines.insert(i + 2, "import React from 'react';")
+                    break
+        
+        return '\n'.join(fixed_lines)
     
     def _fix_import_mismatches(self, files: dict, app_name: str) -> dict:
         """Fix import mismatches and field references between files"""
@@ -506,11 +787,11 @@ Write exactly these 5 lines. No explanations. No markdown."""
     
     def generate_base_file(self, file_type: str, project_name: str) -> str:
         """
-        Generate base Django files using AI
+        Generate base files using AI (Django/Next.js/NestJS)
         
         Args:
-            file_type: Type of file (manage_py, settings_py, urls_py, etc.)
-            project_name: Name of the Django project
+            file_type: Type of file (manage_py, settings_py, package_json, etc.)
+            project_name: Name of the project
             
         Returns:
             Generated file content as string
@@ -534,22 +815,84 @@ Write exactly these 5 lines. No explanations. No markdown."""
                     },
                     json={
                         "model": self.model,
-                        "messages": [{"role": "user", "content": prompt}],
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": "You are a code generator. Output ONLY valid code with NO explanations, NO comments, NO markdown. Just pure code that can be executed directly."
+                            },
+                            {
+                                "role": "user",
+                                "content": prompt
+                            }
+                        ],
                         "temperature": 0.0,
                         "max_tokens": 2000
                     },
                     timeout=30
                 )
                 
+                if response.status_code == 429:
+                    # Rate limit hit - wait longer
+                    if attempt < max_retries - 1:
+                        wait_time = 10 * (attempt + 1)  # 10s, 20s, 30s
+                        print(f"Rate limit hit. Waiting {wait_time} seconds...")
+                        time.sleep(wait_time)
+                        continue
+                    raise Exception(f"Rate limit exceeded after {max_retries} attempts")
+                
                 response.raise_for_status()
                 result = response.json()
                 content = result['choices'][0]['message']['content'].strip()
                 
-                # Remove markdown code blocks
-                if content.startswith("```"):
-                    lines = content.split('\n')
-                    # Remove first line (```python or ```) and last line (```)
-                    content = '\n'.join(lines[1:-1]) if len(lines) > 2 else content
+                # Aggressive cleaning of markdown and explanations
+                lines = content.split('\n')
+                cleaned_lines = []
+                in_code_block = False
+                code_started = False
+                
+                for line in lines:
+                    stripped = line.strip()
+                    
+                    # Skip markdown code block markers
+                    if stripped.startswith('```'):
+                        in_code_block = not in_code_block
+                        continue
+                    
+                    # Skip explanatory text before code starts
+                    if not code_started:
+                        # Detect code start patterns
+                        if (stripped.startswith('{') or  # JSON
+                            stripped.startswith('from ') or stripped.startswith('import ') or  # Python
+                            stripped.startswith('const ') or stripped.startswith('module.exports') or  # JS
+                            stripped.startswith('/**') or  # JSDoc
+                            stripped.startswith('FROM ') or stripped.startswith('WORKDIR ') or  # Dockerfile
+                            stripped.startswith('version:') or stripped.startswith('services:')):  # docker-compose
+                            code_started = True
+                            cleaned_lines.append(line)
+                        continue
+                    
+                    # Once code started, keep everything except obvious explanations
+                    if not stripped.startswith('Here') and not stripped.startswith('This '):
+                        cleaned_lines.append(line)
+                
+                content = '\n'.join(cleaned_lines).strip()
+                
+                # If still has explanatory text at the start, try to extract just the code
+                if content.startswith('Here') or 'example' in content[:100].lower():
+                    # Try to find the actual code block
+                    if '{' in content:
+                        # JSON or JS object
+                        start = content.find('{')
+                        # Find matching closing brace
+                        brace_count = 0
+                        for i in range(start, len(content)):
+                            if content[i] == '{':
+                                brace_count += 1
+                            elif content[i] == '}':
+                                brace_count -= 1
+                                if brace_count == 0:
+                                    content = content[start:i+1]
+                                    break
                 
                 return content
                 

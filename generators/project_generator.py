@@ -8,11 +8,6 @@ import time
 from pathlib import Path
 from typing import List, Dict
 from rich.console import Console
-# from generators.templates import (
-#     get_manage_py, get_base_settings, get_base_urls,
-#     get_env_template, get_dockerfile, get_docker_compose
-# )  # Using AI generation instead
-from generators.gitignore_template import get_gitignore
 from generators.code_validator import validate_and_fix_files
 
 console = Console()
@@ -20,12 +15,13 @@ console = Console()
 class DjangoProjectGenerator:
     """Generates Django project with AI-powered features"""
     
-    def __init__(self, project_name: str, features: List[str], ai_client, project_dir: str = None):
+    def __init__(self, project_name: str, features: List[str], ai_client, project_dir: str = None, language: str = "django"):
         self.project_name = project_name
         self.features = features
         self.ai_client = ai_client
         self.project_dir = Path(project_dir) if project_dir else Path(project_name)
         self.project_path = self.project_dir
+        self.language = language
         self.config_name = "config"  # Django config folder name
         self.all_requirements = set(['Django>=4.2.0', 'djangorestframework>=3.14.0'])
         self.all_settings = []
@@ -36,12 +32,19 @@ class DjangoProjectGenerator:
         self.common_features = ['error_handling']
     
     def generate_project(self):
-        """Generate complete Django project"""
+        """Generate complete project (Django/Next.js/NestJS)"""
         console.print(f"\n[cyan]Creating project directory: {self.project_path}[/cyan]")
         self._create_base_structure()
         
-        console.print("[cyan]Generating Django base project...[/cyan]")
-        self._create_django_base()
+        if self.language == "django":
+            console.print("[cyan]Generating Django base project...[/cyan]")
+            self._create_django_base()
+        elif self.language == "nextjs":
+            console.print("[cyan]Generating Next.js base project...[/cyan]")
+            self._create_nextjs_base()
+        elif self.language == "nestjs":
+            console.print("[cyan]Generating NestJS base project...[/cyan]")
+            self._create_nestjs_base()
         
         for idx, feature in enumerate(self.features):
             console.print(f"[cyan]Generating feature: {feature}...[/cyan]")
@@ -54,7 +57,7 @@ class DjangoProjectGenerator:
                 console.print(f"[dim]Waiting {delay} seconds before next feature...[/dim]")
                 time.sleep(delay)
         
-        console.print("[cyan]Creating requirements.txt...[/cyan]")
+        console.print("[cyan]Creating requirements/dependencies file...[/cyan]")
         self._create_requirements()
         
         console.print("[cyan]Creating setup scripts...[/cyan]")
@@ -63,33 +66,55 @@ class DjangoProjectGenerator:
         console.print("[cyan]Creating documentation...[/cyan]")
         self._create_documentation()
         
-        console.print("[cyan]Finalizing settings...[/cyan]")
-        self._finalize_settings()
+        if self.language == "django":
+            console.print("[cyan]Finalizing settings...[/cyan]")
+            self._finalize_settings()
+        elif self.language == "nextjs":
+            console.print("[cyan]Creating component demo page...[/cyan]")
+            self._create_nextjs_demo_page()
         
         console.print("[green]✓ Project generation complete![/green]")
     
     def _create_base_structure(self):
-        """Create base project directory structure"""
+        """Create base project directory structure based on language"""
         self.project_path.mkdir(exist_ok=True)
-        (self.project_path / "apps").mkdir(exist_ok=True)
-        (self.project_path / "common").mkdir(exist_ok=True)  # For non-DB services
-        (self.project_path / self.config_name).mkdir(exist_ok=True)  # config instead of project_name
-        (self.project_path / "templates").mkdir(exist_ok=True)
-        (self.project_path / "static").mkdir(exist_ok=True)
-        (self.project_path / "media").mkdir(exist_ok=True)
-        (self.project_path / "logs").mkdir(exist_ok=True)
         
-        # Create __init__.py for apps and common
-        self._write_file("apps/__init__.py", "")
-        self._write_file("common/__init__.py", "")
+        if self.language == "django":
+            (self.project_path / "apps").mkdir(exist_ok=True)
+            (self.project_path / "common").mkdir(exist_ok=True)  # For non-DB services
+            (self.project_path / self.config_name).mkdir(exist_ok=True)  # config instead of project_name
+            (self.project_path / "templates").mkdir(exist_ok=True)
+            (self.project_path / "static").mkdir(exist_ok=True)
+            (self.project_path / "media").mkdir(exist_ok=True)
+            (self.project_path / "logs").mkdir(exist_ok=True)
+            
+            # Create __init__.py for apps and common
+            self._write_file("apps/__init__.py", "")
+            self._write_file("common/__init__.py", "")
+        
+        elif self.language == "nextjs":
+            (self.project_path / "src").mkdir(exist_ok=True)
+            (self.project_path / "src" / "app").mkdir(exist_ok=True)
+            (self.project_path / "src" / "components").mkdir(exist_ok=True)
+            (self.project_path / "public").mkdir(exist_ok=True)
+        
+        elif self.language == "nestjs":
+            (self.project_path / "src").mkdir(exist_ok=True)
+            (self.project_path / "src" / "modules").mkdir(exist_ok=True)
     
     def _create_django_base(self):
         """Create Django base configuration files using AI"""
         console.print("[cyan]Generating base Django files with AI...[/cyan]")
         
+        # Only generate Django files if language is Django
+        if self.language != "django":
+            console.print(f"[yellow]Skipping Django base files for {self.language} project[/yellow]")
+            return
+        
         # Generate manage.py (use config as settings module)
         manage_content = self.ai_client.generate_base_file('manage_py', 'config')
         self._write_file("manage.py", manage_content)
+        time.sleep(1)  # Rate limit protection
         
         # __init__.py files
         self._write_file(f"{self.config_name}/__init__.py", "")
@@ -97,14 +122,17 @@ class DjangoProjectGenerator:
         # Generate asgi.py
         asgi_content = self.ai_client.generate_base_file('asgi_py', 'config')
         self._write_file(f"{self.config_name}/asgi.py", asgi_content)
+        time.sleep(1)
         
         # Generate wsgi.py
         wsgi_content = self.ai_client.generate_base_file('wsgi_py', 'config')
         self._write_file(f"{self.config_name}/wsgi.py", wsgi_content)
+        time.sleep(1)
         
         # Generate settings.py
         settings_content = self.ai_client.generate_base_file('settings_py', 'config')
         self._write_file(f"{self.config_name}/settings.py", settings_content)
+        time.sleep(1)
         
         # Validate and fix settings.py
         self._fix_settings_py()
@@ -112,21 +140,21 @@ class DjangoProjectGenerator:
         # Generate urls.py
         urls_content = self.ai_client.generate_base_file('urls_py', 'config')
         self._write_file(f"{self.config_name}/urls.py", urls_content)
+        time.sleep(1)
         
         # Generate .env.example
         env_content = self.ai_client.generate_base_file('env_example', 'config')
         self._write_file(".env.example", env_content)
+        time.sleep(1)
         
-        # .gitignore (keep template - it's just a list)
-        self._write_file(".gitignore", get_gitignore())
+        # Generate .gitignore using AI
+        gitignore_content = self.ai_client.generate_base_file('gitignore', self.project_name)
+        self._write_file(".gitignore", gitignore_content)
+        time.sleep(1)
         
-        # Generate Dockerfile
-        dockerfile_content = self.ai_client.generate_base_file('dockerfile', 'config')
-        self._write_file("Dockerfile", dockerfile_content)
-        
-        # Generate docker-compose.yml
-        compose_content = self.ai_client.generate_base_file('docker_compose', 'config')
-        self._write_file("docker-compose.yml", compose_content)
+        # Generate README.md using AI
+        readme_content = self.ai_client.generate_base_file('readme', self.project_name)
+        self._write_file("README.md", readme_content)
         
         # Create environment-specific settings
         self._create_environment_settings()
@@ -488,97 +516,382 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
         
         console.print("[green]✓ Environment settings created (dev, staging, production)[/green]")
     
+    def _create_nextjs_base(self):
+        """Create Next.js base configuration files using AI"""
+        console.print("[cyan]Generating base Next.js files with AI...[/cyan]")
+        
+        # Generate package.json
+        package_json = self.ai_client.generate_base_file('package_json', self.project_name)
+        self._write_file("package.json", package_json)
+        time.sleep(1)
+        
+        # Generate tsconfig.json
+        tsconfig = self.ai_client.generate_base_file('tsconfig', self.project_name)
+        self._write_file("tsconfig.json", tsconfig)
+        time.sleep(1)
+        
+        # Generate next.config.js
+        next_config = self.ai_client.generate_base_file('next_config', self.project_name)
+        self._write_file("next.config.js", next_config)
+        time.sleep(1)
+        
+        # Generate tailwind.config.js
+        tailwind_config = self.ai_client.generate_base_file('tailwind_config', self.project_name)
+        self._write_file("tailwind.config.js", tailwind_config)
+        time.sleep(1)
+        
+        # Generate postcss.config.js
+        postcss_config = self.ai_client.generate_base_file('postcss_config', self.project_name)
+        self._write_file("postcss.config.js", postcss_config)
+        time.sleep(1)
+        
+        # Create basic Next.js structure
+        (self.project_path / "src").mkdir(exist_ok=True)
+        (self.project_path / "src" / "app").mkdir(exist_ok=True)
+        (self.project_path / "src" / "components").mkdir(exist_ok=True)
+        (self.project_path / "public").mkdir(exist_ok=True)
+        
+        # Generate src/app/layout.tsx
+        app_layout = self.ai_client.generate_base_file('app_layout', self.project_name)
+        self._write_file("src/app/layout.tsx", app_layout)
+        time.sleep(1)
+        
+        # Generate src/app/page.tsx
+        app_page = self.ai_client.generate_base_file('app_page', self.project_name)
+        self._write_file("src/app/page.tsx", app_page)
+        time.sleep(1)
+        
+        # Generate src/app/globals.css
+        globals_css = self.ai_client.generate_base_file('globals_css', self.project_name)
+        self._write_file("src/app/globals.css", globals_css)
+        time.sleep(1)
+        
+        # Generate .env.local.example
+        env_content = self.ai_client.generate_base_file('env_example', self.project_name)
+        self._write_file(".env.local.example", env_content)
+        time.sleep(1)
+        
+        # Generate .gitignore using AI
+        gitignore_content = self.ai_client.generate_base_file('gitignore', self.project_name)
+        self._write_file(".gitignore", gitignore_content)
+        time.sleep(1)
+        
+        # Generate README.md using AI
+        readme_content = self.ai_client.generate_base_file('readme', self.project_name)
+        self._write_file("README.md", readme_content)
+        
+        console.print("[green]✓ Next.js base files created[/green]")
+    
+    def _create_nextjs_demo_page(self):
+        """Create a demo page showcasing all generated components"""
+        if not hasattr(self, 'nextjs_components') or not self.nextjs_components:
+            return
+        
+        # Generate imports
+        imports = ["'use client';", ""]
+        component_usage = []
+        
+        # Add sample data for components that need it
+        sample_data = ""
+        
+        for comp_name in self.nextjs_components:
+            imports.append(f"import {comp_name} from '@/components/{comp_name}/component';")
+            
+            # Create usage examples based on component type
+            if comp_name.lower() == 'button':
+                component_usage.append(f'''
+        <div className="mb-8 p-6 bg-white rounded-lg shadow">
+          <h2 className="text-2xl font-semibold mb-4">{comp_name}</h2>
+          <div className="flex gap-4">
+            <{comp_name}>Primary Button</{comp_name}>
+            <{comp_name}>Secondary Button</{comp_name}>
+          </div>
+        </div>''')
+            
+            elif comp_name.lower() == 'table':
+                if not sample_data:
+                    sample_data = '''
+  const sampleTableData = [
+    { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Admin' },
+    { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'User' },
+    { id: 3, name: 'Bob Johnson', email: 'bob@example.com', role: 'User' },
+  ];
+'''
+                component_usage.append(f'''
+        <div className="mb-8 p-6 bg-white rounded-lg shadow">
+          <h2 className="text-2xl font-semibold mb-4">{comp_name}</h2>
+          <{comp_name} data={{sampleTableData}} />
+        </div>''')
+            
+            elif comp_name.lower() == 'header':
+                component_usage.append(f'''
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4 px-6">{comp_name}</h2>
+          <{comp_name} />
+        </div>''')
+            
+            elif comp_name.lower() == 'footer':
+                component_usage.append(f'''
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4 px-6">{comp_name}</h2>
+          <{comp_name} />
+        </div>''')
+            
+            elif comp_name.lower() == 'sidebar':
+                component_usage.append(f'''
+        <div className="mb-8 p-6 bg-white rounded-lg shadow">
+          <h2 className="text-2xl font-semibold mb-4">{comp_name}</h2>
+          <div className="h-96 border border-gray-200 rounded">
+            <{comp_name} />
+          </div>
+        </div>''')
+            
+            elif comp_name.lower() == 'loader':
+                component_usage.append(f'''
+        <div className="mb-8 p-6 bg-white rounded-lg shadow">
+          <h2 className="text-2xl font-semibold mb-4">{comp_name}</h2>
+          <div className="flex justify-center p-8">
+            <{comp_name} />
+          </div>
+        </div>''')
+            
+            elif comp_name.lower() in ['login', 'loginpage']:
+                component_usage.append(f'''
+        <div className="mb-8 p-6 bg-white rounded-lg shadow">
+          <h2 className="text-2xl font-semibold mb-4">{comp_name}</h2>
+          <div className="max-w-md mx-auto">
+            <{comp_name} />
+          </div>
+        </div>''')
+            
+            elif comp_name.lower() in ['signup', 'signuppage']:
+                component_usage.append(f'''
+        <div className="mb-8 p-6 bg-white rounded-lg shadow">
+          <h2 className="text-2xl font-semibold mb-4">{comp_name}</h2>
+          <div className="max-w-md mx-auto">
+            <{comp_name} />
+          </div>
+        </div>''')
+            
+            else:
+                component_usage.append(f'''
+        <div className="mb-8 p-6 bg-white rounded-lg shadow">
+          <h2 className="text-2xl font-semibold mb-4">{comp_name}</h2>
+          <{comp_name} />
+        </div>''')
+        
+        demo_page = f'''export default function ComponentsDemo() {{{sample_data}
+  return (
+    <main className="min-h-screen p-8 bg-gray-50">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-4xl font-bold mb-2">Component Showcase</h1>
+        <p className="text-lg text-gray-600 mb-12">
+          All generated components for {self.project_name}
+        </p>
+        
+        {''.join(component_usage)}
+      </div>
+    </main>
+  );
+}}
+'''
+        
+        # Add imports at the top
+        demo_page = '\n'.join(imports) + '\n' + demo_page
+        
+        self._write_file("src/app/components/page.tsx", demo_page)
+        console.print(f"[green]✓ Demo page created at /components[/green]")
+        console.print(f"[dim]Visit http://localhost:3000/components to see all components[/dim]")
+    
+    def _create_nestjs_base(self):
+        """Create NestJS base configuration files using AI"""
+        console.print("[cyan]Generating base NestJS files with AI...[/cyan]")
+        
+        # Generate package.json
+        package_json = self.ai_client.generate_base_file('package_json', self.project_name)
+        self._write_file("package.json", package_json)
+        
+        # Generate tsconfig.json
+        tsconfig = self.ai_client.generate_base_file('tsconfig', self.project_name)
+        self._write_file("tsconfig.json", tsconfig)
+        
+        # Generate nest-cli.json
+        nest_cli = self.ai_client.generate_base_file('nest_cli', self.project_name)
+        self._write_file("nest-cli.json", nest_cli)
+        
+        # Generate src/main.ts
+        main_ts = self.ai_client.generate_base_file('main_ts', self.project_name)
+        self._write_file("src/main.ts", main_ts)
+        
+        # Generate src/app.module.ts
+        app_module = self.ai_client.generate_base_file('app_module', self.project_name)
+        self._write_file("src/app.module.ts", app_module)
+        
+        # Generate src/app.controller.ts
+        app_controller = self.ai_client.generate_base_file('app_controller', self.project_name)
+        self._write_file("src/app.controller.ts", app_controller)
+        
+        # Generate src/app.service.ts
+        app_service = self.ai_client.generate_base_file('app_service', self.project_name)
+        self._write_file("src/app.service.ts", app_service)
+        
+        # Generate .env.example
+        env_content = self.ai_client.generate_base_file('env_example', self.project_name)
+        self._write_file(".env.example", env_content)
+        
+        # Generate .gitignore using AI
+        gitignore_content = self.ai_client.generate_base_file('gitignore', self.project_name)
+        self._write_file(".gitignore", gitignore_content)
+        
+        # Generate README.md using AI
+        readme_content = self.ai_client.generate_base_file('readme', self.project_name)
+        self._write_file("README.md", readme_content)
+        
+        # Create basic NestJS structure
+        (self.project_path / "src").mkdir(exist_ok=True)
+        
+        console.print("[green]✓ NestJS base files created[/green]")
+    
     
     def _generate_feature(self, feature: str):
-        """Generate code for a specific feature using AI"""
+        """Generate code for a specific feature using AI (language-agnostic)"""
         try:
             context = {'project_name': self.project_name}
             result = self.ai_client.generate_django_code(feature, context)
             
-            app_name = result.get('app_name', feature)
-            files = result.get('files', {})
-            settings = result.get('settings', '')
-            requirements = result.get('requirements', [])
-            instructions = result.get('instructions', '')
+            # Handle Django features
+            if self.language == "django":
+                self._generate_django_feature(feature, result)
+            elif self.language == "nextjs":
+                self._generate_nextjs_component(feature, result)
+            elif self.language == "nestjs":
+                self._generate_nestjs_module(feature, result)
             
-            # Determine folder based on feature type
-            if feature in self.db_features:
-                folder = "apps"
-            elif feature in self.common_features:
-                folder = "common"
-            else:
-                folder = "apps"  # Default to apps
-            
-            # Validate and fix Python syntax errors
-            console.print(f"[cyan]Validating generated code for {app_name}...[/cyan]")
-            
-            # Debug: Save raw files before validation
-            import json
-            debug_file = self.project_path / f"debug_{app_name}_raw.json"
-            with open(debug_file, 'w') as f:
-                json.dump(files, f, indent=2)
-            
-            files = validate_and_fix_files(files, app_name)
-            
-            # Fix apps.py to ensure correct name format with proper folder
-            if 'apps.py' in files:
-                apps_content = files['apps.py']
-                # Ensure the name field has correct folder prefix
-                if f"name = '{app_name}'" in apps_content:
-                    apps_content = apps_content.replace(
-                        f"name = '{app_name}'",
-                        f"name = '{folder}.{app_name}'"
-                    )
-                elif f"name = 'apps.{app_name}'" in apps_content:
-                    apps_content = apps_content.replace(
-                        f"name = 'apps.{app_name}'",
-                        f"name = '{folder}.{app_name}'"
-                    )
-                    files['apps.py'] = apps_content
-            
-            # Create app directory in correct folder
-            app_path = self.project_path / folder / app_name
-            app_path.mkdir(parents=True, exist_ok=True)
-            
-            # Create __init__.py
-            self._write_file(f"{folder}/{app_name}/__init__.py", "")
-            
-            # Write all generated files
-            for filename, content in files.items():
-                self._write_file(f"{folder}/{app_name}/{filename}", content)
-            
-            # Ensure all required files exist
-            required_files = ['models.py', 'admin.py', 'apps.py', 'urls.py', 'views.py']
-            for req_file in required_files:
-                file_path = self.project_path / folder / app_name / req_file
-                if not file_path.exists():
-                    console.print(f"[yellow]Creating missing {req_file} for {app_name}[/yellow]")
-                    from generators.code_validator import get_minimal_code
-                    minimal_content = get_minimal_code(req_file, app_name)
-                    self._write_file(f"{folder}/{app_name}/{req_file}", minimal_content)
-            
-            # Collect requirements
-            self.all_requirements.update(requirements)
-            
-            # Collect settings
-            if settings:
-                self.all_settings.append(f"\n# {app_name.upper()} Settings\n{settings}")
-            
-            # Collect instructions
-            if instructions:
-                self.all_instructions.append(f"\n## {app_name}\n{instructions}")
-            
-            # Update main settings.py
-            self._update_settings(app_name, folder)
-            
-            # Update main urls.py
-            self._update_urls(app_name, folder)
-            
-            console.print(f"[green]✓ Generated {app_name}[/green]")
+            console.print(f"[green]✓ Generated {feature}[/green]")
             
         except Exception as e:
             console.print(f"[red]✗ Failed to generate {feature}: {str(e)}[/red]")
             console.print(f"[yellow]Skipping {feature}. You can try generating it again later.[/yellow]")
+    
+    def _generate_django_feature(self, feature: str, result: Dict):
+        """Generate Django app feature"""
+        app_name = result.get('app_name', feature)
+        files = result.get('files', {})
+        settings = result.get('settings', '')
+        requirements = result.get('requirements', [])
+        instructions = result.get('instructions', '')
+        
+        # Determine folder based on feature type
+        if feature in self.db_features:
+            folder = "apps"
+        elif feature in self.common_features:
+            folder = "common"
+        else:
+            folder = "apps"  # Default to apps
+        
+        # Validate and fix Python syntax errors
+        console.print(f"[cyan]Validating generated code for {app_name}...[/cyan]")
+        
+        # Debug: Save raw files before validation
+        import json
+        debug_file = self.project_path / f"debug_{app_name}_raw.json"
+        with open(debug_file, 'w') as f:
+            json.dump(files, f, indent=2)
+        
+        files = validate_and_fix_files(files, app_name)
+        
+        # Fix apps.py to ensure correct name format with proper folder
+        if 'apps.py' in files:
+            apps_content = files['apps.py']
+            # Ensure the name field has correct folder prefix
+            if f"name = '{app_name}'" in apps_content:
+                apps_content = apps_content.replace(
+                    f"name = '{app_name}'",
+                    f"name = '{folder}.{app_name}'"
+                )
+            elif f"name = 'apps.{app_name}'" in apps_content:
+                apps_content = apps_content.replace(
+                    f"name = 'apps.{app_name}'",
+                    f"name = '{folder}.{app_name}'"
+                )
+                files['apps.py'] = apps_content
+        
+        # Create app directory in correct folder
+        app_path = self.project_path / folder / app_name
+        app_path.mkdir(parents=True, exist_ok=True)
+        
+        # Create __init__.py
+        self._write_file(f"{folder}/{app_name}/__init__.py", "")
+        
+        # Write all generated files
+        for filename, content in files.items():
+            self._write_file(f"{folder}/{app_name}/{filename}", content)
+        
+        # Ensure all required files exist
+        required_files = ['models.py', 'admin.py', 'apps.py', 'urls.py', 'views.py']
+        for req_file in required_files:
+            file_path = self.project_path / folder / app_name / req_file
+            if not file_path.exists():
+                console.print(f"[yellow]Creating missing {req_file} for {app_name}[/yellow]")
+                from generators.code_validator import get_minimal_code
+                minimal_content = get_minimal_code(req_file, app_name)
+                self._write_file(f"{folder}/{app_name}/{req_file}", minimal_content)
+        
+        # Collect requirements
+        self.all_requirements.update(requirements)
+        
+        # Collect settings
+        if settings:
+            self.all_settings.append(f"\n# {app_name.upper()} Settings\n{settings}")
+        
+        # Collect instructions
+        if instructions:
+            self.all_instructions.append(f"\n## {app_name}\n{instructions}")
+        
+        # Update main settings.py
+        self._update_settings(app_name, folder)
+        
+        # Update main urls.py
+        self._update_urls(app_name, folder)
+    
+    def _generate_nextjs_component(self, component: str, result: Dict):
+        """Generate Next.js component"""
+        component_name = result.get('component_name', component)
+        files = result.get('files', {})
+        dependencies = result.get('dependencies', [])
+        
+        # Create component directory
+        component_path = self.project_path / "src" / "components" / component_name
+        component_path.mkdir(parents=True, exist_ok=True)
+        
+        # Write all generated files
+        for filename, content in files.items():
+            self._write_file(f"src/components/{component_name}/{filename}", content)
+        
+        # Collect dependencies
+        self.all_requirements.update(dependencies)
+        
+        # Track component for demo page
+        if not hasattr(self, 'nextjs_components'):
+            self.nextjs_components = []
+        self.nextjs_components.append(component_name)
+    
+    def _generate_nestjs_module(self, module: str, result: Dict):
+        """Generate NestJS module"""
+        module_name = result.get('module_name', module)
+        files = result.get('files', {})
+        dependencies = result.get('dependencies', [])
+        
+        # Create module directory
+        module_path = self.project_path / "src" / "modules" / module_name
+        module_path.mkdir(parents=True, exist_ok=True)
+        
+        # Write all generated files
+        for filename, content in files.items():
+            self._write_file(f"src/modules/{module_name}/{filename}", content)
+        
+        # Collect dependencies
+        self.all_requirements.update(dependencies)
     
     def _update_settings(self, app_name: str, folder: str = "apps"):
         """Update settings to include new app"""
@@ -650,18 +963,36 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
         urls_path.write_text('\n'.join(new_lines))
     
     def _create_requirements(self):
-        """Create requirements.txt file"""
-        # Add essential packages
-        self.all_requirements.update([
-            'python-dotenv>=1.0.0',
-            'gunicorn>=21.2.0',
-            'psycopg2-binary>=2.9.9',
-            'whitenoise>=6.6.0',
-        ])
+        """Create requirements/dependencies file"""
+        if self.language == "django":
+            # Add essential base packages first
+            essential_packages = {
+                'Django>=4.2.0',
+                'djangorestframework>=3.14.0',
+                'python-dotenv>=1.0.0',
+                'psycopg2-binary>=2.9.9',
+                'whitenoise>=6.6.0',
+                'gunicorn>=21.2.0',
+            }
+            self.all_requirements.update(essential_packages)
+            
+            # Try to get AI-generated requirements for additional packages
+            try:
+                base_requirements = self.ai_client.generate_base_file('requirements_base', self.project_name)
+                # Merge with collected requirements
+                base_reqs = set(line.strip() for line in base_requirements.strip().split('\n') if line.strip())
+                self.all_requirements.update(base_reqs)
+            except Exception as e:
+                console.print(f"[yellow]⚠ Could not generate additional requirements: {e}[/yellow]")
+            
+            requirements = sorted(self.all_requirements)
+            content = "\n".join(requirements)
+            self._write_file("requirements.txt", content)
+            console.print(f"[green]✓ Created requirements.txt with {len(requirements)} packages[/green]")
         
-        requirements = sorted(self.all_requirements)
-        content = "\n".join(requirements)
-        self._write_file("requirements.txt", content)
+        elif self.language in ["nextjs", "nestjs"]:
+            # package.json is already generated in base files
+            console.print("[dim]Dependencies defined in package.json[/dim]")
     
     def _create_documentation(self):
         """Create setup documentation"""
@@ -1014,7 +1345,11 @@ python manage.py runserver
             console.print(f"[yellow]  You may need to manually fix the settings.py file[/yellow]")
 
     def setup_environment(self):
-        """Create virtual environment"""
+        """Create virtual environment (Django/Python only)"""
+        if self.language != "django":
+            console.print(f"[yellow]Skipping virtual environment for {self.language} project[/yellow]")
+            return
+        
         import subprocess
         import sys
         
@@ -1040,6 +1375,13 @@ python manage.py runserver
             raise
     
     def install_requirements(self):
+        """Install dependencies (language-specific)"""
+        if self.language == "django":
+            self._install_python_requirements()
+        elif self.language in ["nextjs", "nestjs"]:
+            self._install_npm_packages()
+    
+    def _install_python_requirements(self):
         """Install Python dependencies"""
         import subprocess
         import sys
@@ -1084,6 +1426,33 @@ python manage.py runserver
                 error_msg = e.stderr.decode()
                 console.print(f"[yellow]Error: {error_msg[:500]}[/yellow]")
             console.print(f"[yellow]Try running manually: cd {self.project_path} && venv\\Scripts\\pip install -r requirements.txt[/yellow]")
+            raise
+    
+    def _install_npm_packages(self):
+        """Install npm packages for Next.js/NestJS"""
+        import subprocess
+        
+        console.print("[cyan]Installing npm packages...[/cyan]")
+        
+        try:
+            subprocess.run(
+                ["npm", "install"],
+                cwd=self.project_path,
+                check=True,
+                capture_output=True,
+                timeout=300
+            )
+            console.print("[green]✓ npm packages installed[/green]")
+        except subprocess.TimeoutExpired:
+            console.print(f"[red]✗ npm install timed out[/red]")
+            console.print(f"[yellow]Try running manually: cd {self.project_path} && npm install[/yellow]")
+            raise
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]✗ Failed to install npm packages[/red]")
+            if e.stderr:
+                error_msg = e.stderr.decode()
+                console.print(f"[yellow]Error: {error_msg[:500]}[/yellow]")
+            console.print(f"[yellow]Try running manually: cd {self.project_path} && npm install[/yellow]")
             raise
     
     def run_migrations(self):

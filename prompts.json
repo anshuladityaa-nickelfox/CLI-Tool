@@ -1,41 +1,75 @@
 {
-  "base_files": {
-    "manage_py": "Generate Django manage.py for '{project_name}'. Python only.",
-    "settings_py": "Generate Django settings.py for '{project_name}': BASE_DIR, SECRET_KEY, DEBUG, ALLOWED_HOSTS, INSTALLED_APPS, MIDDLEWARE, ROOT_URLCONF='{project_name}.urls', TEMPLATES, WSGI_APPLICATION='{project_name}.wsgi.application', DATABASES, STATIC/MEDIA, REST_FRAMEWORK, LOGGING (with file handler to logs/django.log). Add '(BASE_DIR / \"logs\").mkdir(exist_ok=True)' before LOGGING config. Add '# Feature-specific settings will be added below' at end. Python only.",
-    "urls_py": "Generate Django urls.py for '{project_name}': admin, rest_framework.urls, '# Feature URLs will be added here' comment, DEBUG static/media. Python only.",
-    "wsgi_py": "Generate Django wsgi.py for '{project_name}'. Python only.",
-    "asgi_py": "Generate Django asgi.py for '{project_name}'. Python only.",
-    "env_example": "Generate .env.example: SECRET_KEY, DEBUG, ALLOWED_HOSTS, EMAIL_*, AWS_*, REDIS_URL, CELERY_*, DJANGO_LOG_LEVEL.",
-    "dockerfile": "Generate Dockerfile: python:3.11-slim, requirements, collectstatic, gunicorn '{project_name}'.",
-    "docker_compose": "Generate docker-compose.yml: web, db (postgres), redis, celery."
+  "django": {
+    "base_files": {
+      "manage_py": "Django manage.py: import os, sys, set DJANGO_SETTINGS_MODULE to '{project_name}.settings', import execute_from_command_line, call it with sys.argv. Python only.",
+      "settings_py": "Django settings.py: BASE_DIR, SECRET_KEY, DEBUG=True, ALLOWED_HOSTS=['*'], INSTALLED_APPS (admin, auth, contenttypes, sessions, messages, staticfiles, rest_framework), MIDDLEWARE (standard), ROOT_URLCONF='{project_name}.urls', TEMPLATES, WSGI_APPLICATION='{project_name}.wsgi.application', DATABASES (sqlite3), STATIC_URL, MEDIA_URL, REST_FRAMEWORK, create logs dir, LOGGING to logs/{project_name}.log. Python only.",
+      "urls_py": "Django urls.py: import admin, path, include, settings, static. urlpatterns with admin/, api-auth/, comment for features. Add static/media if DEBUG. Python only.",
+      "wsgi_py": "Django wsgi.py: import os, set DJANGO_SETTINGS_MODULE to '{project_name}.wsgi', import get_wsgi_application, create application. Python only.",
+      "asgi_py": "Django asgi.py: import os, set DJANGO_SETTINGS_MODULE to '{project_name}.asgi', import get_asgi_application, create application. Python only.",
+      "env_example": "Django .env.example: SECRET_KEY, DEBUG, ALLOWED_HOSTS, DATABASE_URL, EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASSWORD, AWS keys, REDIS_URL. Plain text.",
+      "gitignore": "Django .gitignore: __pycache__, *.pyc, venv, .env, db.sqlite3, *.log, staticfiles, media, .DS_Store. Plain text.",
+      "requirements_base": "Django requirements.txt: Django>=4.2.0, djangorestframework>=3.14.0, python-dotenv>=1.0.0, psycopg2-binary>=2.9.9, whitenoise>=6.6.0, gunicorn>=21.2.0. Plain text.",
+      "readme": "Django README.md for '{project_name}': title, description, setup (venv, pip install, migrate, runserver), structure, features. Markdown."
+    },
+    "prompt_template": "Act as senior Django architect. Generate Django app code. Return ONLY this exact JSON structure with NO extra text:\n{{\n  \"app_name\": \"{app_name}\",\n  \"files\": {{\n    \"models.py\": \"code\",\n    \"admin.py\": \"code\",\n    \"apps.py\": \"code\",\n    \"urls.py\": \"code\",\n    \"views.py\": \"code\"\n  }},\n  \"settings\": \"\",\n  \"requirements\": [],\n  \"instructions\": \"\"\n}}\nCreate for: {feature_description}. Keep code minimal (10-15 lines per file). Use get_user_model() for User. Add related_name to all ForeignKeys. Valid Python only.",
+    "features": {
+      "mail": {"app_name": "mail_service", "description": "email sending with Email model"},
+      "notification": {"app_name": "notifications", "description": "user notifications with Notification model"},
+      "rbac": {"app_name": "rbac", "description": "Role and Permission models (NO custom User)"},
+      "upload": {"app_name": "uploads", "description": "file uploads with UploadedFile model"},
+      "error_handling": {"app_name": "error_handler", "description": "error logging with ErrorLog model"},
+      "logging": {"app_name": "logging_system", "description": "system logging with LogEntry model"}
+    }
   },
   
-  "prompt_template": "Act as senior Django architect. Generate Django app code. Return ONLY this exact JSON structure with NO extra text:\n{{\n  \"app_name\": \"{app_name}\",\n  \"files\": {{\n    \"models.py\": \"from django.db import models\\nfrom django.contrib.auth import get_user_model\\n\\nUser = get_user_model()\\n\\nclass Example(models.Model):\\n    name = models.CharField(max_length=255)\\n    created_at = models.DateTimeField(auto_now_add=True)\",\n    \"admin.py\": \"from django.contrib import admin\\nfrom .models import Example\\n\\nadmin.site.register(Example)\",\n    \"apps.py\": \"from django.apps import AppConfig\\n\\nclass {app_name}Config(AppConfig):\\n    default_auto_field = 'django.db.models.BigAutoField'\\n    name = 'apps.{app_name}'\",\n    \"urls.py\": \"from django.urls import path\\n\\nurlpatterns = []\\n\",\n    \"views.py\": \"from rest_framework import viewsets\\nfrom .models import Example\\n\\nclass ExampleViewSet(viewsets.ModelViewSet):\\n    queryset = Example.objects.all()\"\n  }},\n  \"settings\": \"\",\n  \"requirements\": [],\n  \"instructions\": \"\"\n}}\n\nCreate for: {feature_description}. Keep code minimal (10-15 lines per file). Use get_user_model() for User. Add related_name to all ForeignKeys. Ensure valid Python syntax.",
+  "nextjs": {
+    "base_files": {
+      "package_json": "Next.js package.json: name '{project_name}', version '1.0.0', scripts (dev: 'next dev', build: 'next build', start: 'next start', lint: 'next lint'), dependencies (next: '^14.0.0', react: '^18.2.0', react-dom: '^18.2.0'), devDependencies (typescript: '^5.0.0', '@types/react': '^18.2.0', '@types/node': '^20.0.0', tailwindcss: '^3.3.0', postcss: '^8.4.0', autoprefixer: '^10.4.0', eslint: '^8.0.0', 'eslint-config-next': '^14.0.0'). JSON only.",
+      "tsconfig": "Next.js tsconfig.json: target ES2017, lib [dom, esnext], jsx preserve, module esnext, strict true, paths @/* to ./src/*. JSON only.",
+      "next_config": "next.config.js: reactStrictMode true, images domains [localhost]. Use module.exports. JavaScript only.",
+      "tailwind_config": "tailwind.config.js: content [./src/**/*.{js,ts,jsx,tsx,mdx}], theme extend {}, plugins []. Use module.exports. JavaScript only.",
+      "postcss_config": "postcss.config.js: plugins tailwindcss and autoprefixer. Use module.exports. JavaScript only.",
+      "app_layout": "src/app/layout.tsx: 'use client', import Inter from next/font/google, import './globals.css', create inter font, export metadata (title '{project_name}'), RootLayout with html, body (inter.className), children. TypeScript only.",
+      "app_page": "src/app/page.tsx: Home component with main (min-h-screen p-8), h1 'Welcome to {project_name}', p 'Check src/components for components'. Tailwind classes. TypeScript only.",
+      "globals_css": "src/app/globals.css: @tailwind base, @tailwind components, @tailwind utilities. Basic body styles. CSS only.",
+      "env_example": ".env.local.example: NEXT_PUBLIC_API_URL, API_SECRET_KEY. Plain text.",
+      "gitignore": "Next.js .gitignore: node_modules, .next, out, .env*.local, *.log. Plain text.",
+      "readme": "Next.js README.md for '{project_name}': title, description, setup (npm install, npm run dev), structure. Markdown."
+    },
+    "prompt_template": "Act as senior React/Next.js developer. Generate Next.js component. Return ONLY this exact JSON structure:\n{{\n  \"component_name\": \"{component_name}\",\n  \"files\": {{\n    \"component.tsx\": \"code\",\n    \"types.ts\": \"code\",\n    \"styles.module.css\": \"code\"\n  }},\n  \"dependencies\": [],\n  \"instructions\": \"\"\n}}\nCreate: {component_description}. Use TypeScript, Tailwind CSS, functional components with hooks. Modern React patterns. Valid TypeScript only.",
+    "components": {
+      "button": {"component_name": "Button", "description": "reusable Button component with variants (primary, secondary, danger), sizes, loading state, disabled state"},
+      "table": {"component_name": "Table", "description": "data Table component with sorting, pagination, search, row selection. Expects data prop as array of objects."},
+      "header": {"component_name": "Header", "description": "Header component with logo, navigation menu, user dropdown, responsive mobile menu"},
+      "footer": {"component_name": "Footer", "description": "Footer component with links, social media icons, copyright"},
+      "loader": {"component_name": "Loader", "description": "Loader component with spinner, skeleton, progress bar variants"},
+      "sidebar": {"component_name": "Sidebar", "description": "Sidebar component with navigation links, collapsible, icons, active state"},
+      "login": {"component_name": "LoginPage", "description": "Login page with email/password form, validation, remember me, forgot password link. Use useState for form state."},
+      "signup": {"component_name": "SignupPage", "description": "Signup page with name, email, password, confirm password, terms checkbox, validation. Use useState for form state."}
+    }
+  },
   
-  "features": {
-    "mail": {
-      "app_name": "mail_service",
-      "description": "email sending with Email model"
+  "nestjs": {
+    "base_files": {
+      "package_json": "NestJS package.json: name '{project_name}', version '1.0.0', scripts (start: 'nest start', 'start:dev': 'nest start --watch', build: 'nest build'), dependencies ('@nestjs/core': '^10.0.0', '@nestjs/common': '^10.0.0', '@nestjs/platform-express': '^10.0.0', '@nestjs/typeorm': '^10.0.0', typeorm: '^0.3.0', pg: '^8.11.0', 'class-validator': '^0.14.0', 'class-transformer': '^0.5.0', 'reflect-metadata': '^0.1.13', rxjs: '^7.8.0'), devDependencies ('@nestjs/cli': '^10.0.0', '@nestjs/schematics': '^10.0.0', typescript: '^5.0.0', '@types/node': '^20.0.0'). JSON only.",
+      "tsconfig": "NestJS tsconfig.json: module commonjs, target ES2021, experimentalDecorators true, emitDecoratorMetadata true, outDir ./dist, baseUrl ./src. JSON only.",
+      "nest_cli": "nest-cli.json: collection @nestjs/schematics, sourceRoot src. JSON only.",
+      "main_ts": "src/main.ts: import NestFactory, AppModule, create app, enableCors, useGlobalPipes(ValidationPipe), listen 3000. TypeScript only.",
+      "app_module": "src/app.module.ts: import Module, ConfigModule, TypeOrmModule, create AppModule with @Module decorator, imports ConfigModule and TypeOrmModule. TypeScript only.",
+      "app_controller": "src/app.controller.ts: import Controller, Get, AppService, @Controller(), @Get() returns Hello World. TypeScript only.",
+      "app_service": "src/app.service.ts: import Injectable, @Injectable(), getHello() returns Hello World. TypeScript only.",
+      "env_example": ".env.example: DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_NAME, JWT_SECRET, PORT. Plain text.",
+      "gitignore": "NestJS .gitignore: node_modules, dist, .env, *.log. Plain text.",
+      "readme": "NestJS README.md for '{project_name}': title, description, setup (npm install, npm run start:dev), structure. Markdown."
     },
-    "notification": {
-      "app_name": "notifications",
-      "description": "user notifications with Notification model"
-    },
-    "rbac": {
-      "app_name": "rbac",
-      "description": "Role and Permission models (NO custom User)"
-    },
-    "upload": {
-      "app_name": "uploads",
-      "description": "file uploads with UploadedFile model"
-    },
-    "error_handling": {
-      "app_name": "error_handler",
-      "description": "error logging with ErrorLog model"
-    },
-    "logging": {
-      "app_name": "logging_system",
-      "description": "system logging with LogEntry model"
+    "prompt_template": "Act as senior NestJS developer. Generate NestJS module. Return ONLY this exact JSON structure:\n{{\n  \"module_name\": \"{module_name}\",\n  \"files\": {{\n    \"module.ts\": \"code\",\n    \"controller.ts\": \"code\",\n    \"service.ts\": \"code\",\n    \"entity.ts\": \"code\",\n    \"dto.ts\": \"code\"\n  }},\n  \"dependencies\": [],\n  \"instructions\": \"\"\n}}\nCreate: {module_description}. Use TypeScript, decorators, TypeORM, class-validator. RESTful API. Valid TypeScript only.",
+    "modules": {
+      "auth": {"module_name": "auth", "description": "Auth module with JWT, login, register, refresh token, guards"},
+      "users": {"module_name": "users", "description": "Users module with CRUD, User entity, password hashing"},
+      "mail": {"module_name": "mail", "description": "Mail module with email sending, templates, queue"},
+      "notifications": {"module_name": "notifications", "description": "Notifications module with create, read, mark as read"},
+      "upload": {"module_name": "upload", "description": "Upload module with file upload, validation, storage (local/S3)"},
+      "logging": {"module_name": "logging", "description": "Logging module with Winston, log levels, file/console transport"}
     }
   }
 }
